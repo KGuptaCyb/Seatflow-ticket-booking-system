@@ -22,5 +22,13 @@ export function createApp() {
   app.use('/api/auth', auth); app.use('/api/movies', movies); app.use('/api/events', events);
   app.use('/api/venues', venues); app.use('/api/bookings', bookings); app.use('/api', waitlist);
   app.use(errorHandler);
+  app.get("/", (_req, res) => {
+    res.json({
+      message: "SeatFlow API is running",
+      status: "ok"
+    });
+  });
+  app.use(errorHandler);
+  
   return app;
 }
