@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: seatflow-postgres-test
+    environment:
+      POSTGRES_DB: seatflow_test
+      POSTGRES_USER: seatflow_test
+      POSTGRES_PASSWORD: seatflow_test
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seatflow_test -d seatflow_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - seatflow-postgres-test-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: seatflow-redis-test
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - seatflow-redis-test-data:/data
+
+volumes:
+  seatflow-postgres-test-data:
+  seatflow-redis-test-data:

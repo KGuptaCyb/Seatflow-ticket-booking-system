@@ -1,0 +1,2 @@
+import { Server } from 'socket.io';
+let io:Server; export const initialiseRealtime=(server:any,origin:(origin:string|undefined,callback:(error:Error|null,allowed?:boolean)=>void)=>void)=>io=new Server(server,{cors:{origin}}); export const eventChanged=(eventId:string,seats:unknown[])=>io?.to(`event:${eventId}`).emit('seats:changed',{eventId,seats}); export const attachRealtime=(socket:any)=>socket.on('event:join',(id:string)=>socket.join(`event:${id}`));

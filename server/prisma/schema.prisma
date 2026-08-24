@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  CUSTOMER
+  ORGANISER
+  ADMIN
+}
+enum EventType {
+  MOVIE
+  CONCERT
+}
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+enum MovieStatus {
+  UPCOMING
+  NOW_SHOWING
+  ENDED
+}
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+  OFFERED
+}
+enum BookingStatus {
+  PAYMENT_PENDING
+  CONFIRMED
+  CANCELLED
+  PAYMENT_FAILED
+  EXPIRED
+}
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  CANCELLED
+  DECLINED
+  EXPIRED
+}
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+model User {
+  id String @id @default(cuid())
+  name String
+  email String @unique
+  passwordHash String
+  role Role @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  bookings Booking[]
+  holds EventSeat[] @relation("HeldSeats")
+  events Event[] @relation("OrganiserEvents")
+  waitlist Waitlist[]
+}
+model Venue {
+  id String @id @default(cuid())
+  name String
+  location String
+  details String?
+  seats Seat[]
+  events Event[]
+  createdAt DateTime @default(now())
+}
+model Seat {
+  id String @id @default(cuid())
+  venueId String
+  venue Venue @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  row String
+  number Int
+  category String
+  x Int?
+  y Int?
+  eventSeats EventSeat[]
+  @@unique([venueId, row, number])
+}
+model Event {
+  id String @id @default(cuid())
+  title String
+  description String
+  type EventType
+  movieId String?
+  movie Movie? @relation(fields: [movieId], references: [id])
+  venueId String
+  venue Venue @relation(fields: [venueId], references: [id])
+  organiserId String
+  organiser User @relation("OrganiserEvents", fields: [organiserId], references: [id])
+  startsAt DateTime
+  endsAt DateTime?
+  status EventStatus @default(DRAFT)
+  pricing Json
+  eventSeats EventSeat[]
+  bookings Booking[]
+  waitlist Waitlist[]
+  createdAt DateTime @default(now())
+  @@index([status, startsAt])
+  @@index([movieId, startsAt])
+}
+model Movie {
+  id String @id @default(cuid())
+  title String
+  slug String @unique
+  description String
+  posterUrl String
+  backdropUrl String?
+  releaseDate DateTime
+  durationMinutes Int
+  language String
+  genres String[]
+  certification String?
+  director String?
+  cast String[]
+  trailerUrl String?
+  rating Float?
+  status MovieStatus @default(NOW_SHOWING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  showings Event[]
+  @@index([status, releaseDate])
+  @@index([language])
+}
+model EventSeat {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatId String
+  seat Seat @relation(fields: [seatId], references: [id])
+  category String
+  price Int
+  status SeatStatus @default(AVAILABLE)
+  heldById String?
+  heldBy User? @relation("HeldSeats", fields: [heldById], references: [id])
+  holdExpiresAt DateTime?
+  bookingSeat BookingSeat?
+  offers WaitlistOffer[]
+  @@unique([eventId, seatId])
+  @@index([eventId, status])
+}
+model Booking {
+  id String @id @default(cuid())
+  reference String @unique
+  qrCode    String?
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  eventId String
+  event Event @relation(fields: [eventId], references: [id])
+  status BookingStatus @default(PAYMENT_PENDING)
+  subtotal Int
+  convenienceFee Int @default(0)
+  tax Int @default(0)
+  total Int
+  qrToken String @unique
+  createdAt DateTime @default(now())
+  seats BookingSeat[]
+  payment Payment?
+  @@index([userId, createdAt])
+}
+model Payment {
+  id String @id @default(cuid())
+  reference String @unique
+  bookingId String @unique
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  status PaymentStatus @default(PENDING)
+  expiresAt DateTime
+  actionTokenHash String @unique
+  actionTokenExpiresAt DateTime
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  @@index([status, expiresAt])
+}
+model BookingSeat {
+  id String @id @default(cuid())
+  bookingId String
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  eventSeatId String @unique
+  eventSeat EventSeat @relation(fields: [eventSeatId], references: [id])
+  price Int
+}
+model Waitlist {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  category String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  offers WaitlistOffer[]
+  @@unique([eventId, userId, category])
+  @@index([eventId, category, active, createdAt])
+}
+model WaitlistOffer {
+  id String @id @default(cuid())
+  waitlistId String
+  waitlist Waitlist @relation(fields: [waitlistId], references: [id])
+  eventSeatId String
+  eventSeat EventSeat @relation(fields: [eventSeatId], references: [id])
+  actionTokenHash String @unique
+  status OfferStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([eventSeatId, status])
+}
