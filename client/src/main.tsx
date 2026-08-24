@@ -1381,7 +1381,24 @@ function Bookings() {
       );
     }
   };
-
+    const remove = async (id: string) => {
+    if (
+      !window.confirm(
+        'Delete this cancelled ticket permanently?'
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.delete(`/bookings/${id}`);
+      await load();
+    } catch (error: any) {
+      alert(
+        error.response?.data?.message ||
+          'Could not delete this ticket'
+      );
+    }
+  };
   return (
     <main>
       <div className="pageHead">
@@ -1459,6 +1476,20 @@ function Bookings() {
                   </button>
                 </>
               )}
+
+
+{booking.status === 'CANCELLED' && (
+  <button
+    type="button"
+    onClick={() =>
+      void remove(booking.id)
+    }
+  >
+    Delete ticket
+  </button>
+)}
+
+
 
               {booking.status ===
                 'PAYMENT_PENDING' &&

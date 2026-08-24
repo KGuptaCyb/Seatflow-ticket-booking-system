@@ -164,4 +164,35 @@ r.post('/:id/cancel', authenticate, asyncRoute(async (req: AuthRequest, res) => 
   eventChanged(booking.eventId, booking.seats.map(({ eventSeatId }) => ({ id: eventSeatId, status: 'AVAILABLE' }))); await Promise.all(booking.seats.map(({ eventSeatId }) => offerNext(eventSeatId))); res.json({ success: true, data: booking });
 }));
 
+r.delete('/:id', authenticate, authorize('CUSTOMER'), asyncRoute(async (req: AuthRequest, res) => {
+  const booking = await prisma.booking.findUnique({
+    where: { id: String(req.params.id) },
+    include: {
+      seats: true,
+      payment: true,
+    },
+  });
+
+  if (!booking) {
+    throw new ApiError(404, 'Booking not found');
+  }
+
+  if (booking.userId !== req.user!.id) {
+    throw new ApiError(403, 'Not your booking');
+  }
+
+  if (!['CANCELLED', 'EXPIRED', 'PAYMENT_FAILED'].includes(booking.status)) {
+    throw new ApiError(409, 'Only cancelled or expired bookings can be deleted');
+  }
+
+  await prisma.booking.delete({
+    where: { id: booking.id },
+  });
+
+  res.json({
+    success: true,
+    data: { deleted: true },
+  });
+}));
+
 export default r;
